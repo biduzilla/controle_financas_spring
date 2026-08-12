@@ -1,11 +1,15 @@
 package com.example.ms_auth.models
 
 import jakarta.persistence.*
+import org.hibernate.annotations.SQLDelete
+import org.hibernate.annotations.SQLRestriction
 import java.time.Instant
 import java.util.UUID
 
 @Entity
 @Table(name = "refresh_tokens")
+@SQLRestriction("deleted <> true")
+@SQLDelete(sql = "UPDATE refresh_tokens SET deleted = true, updatedAt = NOW() WHERE id = ?")
 class RefreshToken(
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
