@@ -69,7 +69,7 @@ class JwtService(
         return buildToken(
             mapOf("type" to TokenType.REFRESH_TOKEN.claimValue),
             userDetails,
-            getExpirationTime()
+            getRefreshExpirationTime()
         )
     }
 
