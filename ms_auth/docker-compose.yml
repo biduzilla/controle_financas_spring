@@ -1,0 +1,20 @@
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.103.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8888:8888"   # Métricas do collector
+      - "8889:8889"   # Health check
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true   # Habilita recepção OTLP no Jaeger
+    ports:
+      - "16686:16686"   # UI do Jaeger
+      - "4317:4317"     # (opcional) OTLP gRPC direto, não usado se passarmos pelo Collector
+      - "4318:4318"     # (opcional) OTLP HTTP direto

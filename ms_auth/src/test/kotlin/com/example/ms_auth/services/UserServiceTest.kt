@@ -1,5 +1,8 @@
 package com.example.ms_auth.services
 
+import com.example.ms_auth.dto.CreateUserRequest
+import com.example.ms_auth.dto.UpdateUserRequest
+import com.example.ms_auth.exceptions.BadRequestException
 import com.example.ms_auth.exceptions.NotFoundException
 import com.example.ms_auth.models.User
 import com.example.ms_auth.repositories.UserRepository
@@ -13,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.*
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageImpl
+import org.springframework.security.crypto.password.PasswordEncoder
 import java.util.*
 import java.util.UUID.randomUUID
 import kotlin.test.Test
@@ -23,6 +27,10 @@ class UserServiceTest {
 
     @Mock
     private lateinit var userRepository: UserRepository
+
+    @Mock
+    private lateinit var passwordEncoder: PasswordEncoder
+
     @InjectMocks
     private lateinit var service: UserService
 
@@ -37,6 +45,215 @@ class UserServiceTest {
         passwordHash = passwordHash,
         name = name
     )
+
+    @Test
+    fun `signUp should save user when email is new and password is valid`() {
+        val request = CreateUserRequest(
+            email = "new@email.com",
+            password = "Password1",
+            name = "New User"
+        )
+
+        whenever(userRepository.existsByEmail(request.email)).thenReturn(false)
+        whenever(passwordEncoder.encode(request.password)).thenReturn("hashedPassword1")
+
+        val savedUser = createFakeUser(
+            email = request.email,
+            passwordHash = "hashedPassword1",
+            name = request.name
+        )
+        whenever(userRepository.save(any<User>())).thenReturn(savedUser)
+
+        val result = service.signUp(request)
+        assertEquals(savedUser, result)
+        verify(userRepository).existsByEmail(request.email)
+        verify(passwordEncoder).encode(request.password)
+        verify(userRepository).save(argThat { u ->
+            u.email == request.email &&
+                    u.passwordHash == "hashedPassword1" &&
+                    u.name == request.name
+        })
+    }
+
+    @Test
+    fun `signUp should throw BadRequestException when email already exists`() {
+        val request = CreateUserRequest(
+            email = "duplicate@email.com",
+            password = "Password1",
+            name = "Some Name"
+        )
+        whenever(userRepository.existsByEmail(request.email)).thenReturn(true)
+
+        val exception = assertThrows<BadRequestException> {
+            service.signUp(request)
+        }
+        assertEquals("Email already exists", exception.message)
+
+        verify(passwordEncoder, never()).encode(any())
+        verify(userRepository, never()).save(any())
+    }
+
+    @Test
+    fun `signUp should throw BadRequestException when password is too short`() {
+        val request = CreateUserRequest(
+            email = "ok@email.com",
+            password = "Ab1",
+            name = "Name"
+        )
+        whenever(userRepository.existsByEmail(request.email)).thenReturn(false)
+
+        val exception = assertThrows<BadRequestException> {
+            service.signUp(request)
+        }
+        assertTrue(exception.message!!.contains("8 digits"))
+
+        verify(passwordEncoder, never()).encode(any())
+        verify(userRepository, never()).save(any())
+    }
+
+    @Test
+    fun `signUp should throw BadRequestException when password has no letter`() {
+        val request = CreateUserRequest(
+            email = "ok@email.com",
+            password = "12345678",
+            name = "Name"
+        )
+        whenever(userRepository.existsByEmail(request.email)).thenReturn(false)
+
+        val exception = assertThrows<BadRequestException> {
+            service.signUp(request)
+        }
+        assertTrue(exception.message!!.contains("one letter"))
+
+        verify(passwordEncoder, never()).encode(any())
+        verify(userRepository, never()).save(any())
+    }
+
+    @Test
+    fun `signUp should throw BadRequestException when password has no digit`() {
+        val request = CreateUserRequest(
+            email = "ok@email.com",
+            password = "Password",
+            name = "Name"
+        )
+        whenever(userRepository.existsByEmail(request.email)).thenReturn(false)
+
+        val exception = assertThrows<BadRequestException> {
+            service.signUp(request)
+        }
+        assertTrue(exception.message!!.contains("one digit"))
+
+        verify(passwordEncoder, never()).encode(any())
+        verify(userRepository, never()).save(any())
+    }
+
+    @Test
+    fun `update should update user fields when valid data is provided`() {
+        val id = randomUUID()
+        val existingUser = createFakeUser(id = id, email = "old@email.com", name = "Old Name")
+        val request = UpdateUserRequest(
+            email = "new@email.com",
+            password = "Password1",
+            name = "New User"
+        )
+
+        whenever(userRepository.findById(id)).thenReturn(Optional.of(existingUser))
+        whenever(userRepository.existsByEmail(request.email!!)).thenReturn(false)
+        whenever(passwordEncoder.encode(request.password!!)).thenReturn("hashedNewPassword")
+        whenever(userRepository.save(any<User>())).thenAnswer { it.arguments[0] as User }
+
+        val result = service.update(id, request)
+
+        // O usuário retornado deve ter os novos dados
+        assertEquals(request.email, result.email)
+        assertEquals("hashedNewPassword", result.passwordHash)
+        assertEquals(request.name, result.name)
+
+        // Verifica se save foi chamado com os campos atualizados
+        verify(userRepository).save(argThat { user ->
+            user.email == request.email &&
+                    user.passwordHash == "hashedNewPassword" &&
+                    user.name == request.name
+        })
+        verify(passwordEncoder).encode(request.password!!)
+    }
+
+    @Test
+    fun `update should throw BadRequestException when email already exists for another user`() {
+        val id = randomUUID()
+        val existingUser = createFakeUser(id = id, email = "user@email.com")
+        val request = UpdateUserRequest(
+            email = "duplicate@email.com",
+            password = null,
+            name = null
+        )
+
+        whenever(userRepository.findById(id)).thenReturn(Optional.of(existingUser))
+        whenever(userRepository.existsByEmail(request.email!!)).thenReturn(true)
+
+        val exception = assertThrows<BadRequestException> {
+            service.update(id, request)
+        }
+        assertEquals("Email already exists", exception.message)
+
+        verify(passwordEncoder, never()).encode(any())
+        verify(userRepository, never()).save(any())
+    }
+
+    @Test
+    fun `update should throw BadRequestException when password is too short`() {
+        val id = randomUUID()
+        val existingUser = createFakeUser(id = id, email = "user@email.com")
+        val request = UpdateUserRequest(
+            email = null,          // não altera e-mail
+            password = "Ab1",      // senha curta
+            name = null
+        )
+
+        whenever(userRepository.findById(id)).thenReturn(Optional.of(existingUser))
+
+        val exception = assertThrows<BadRequestException> {
+            service.update(id, request)
+        }
+        assertTrue(exception.message!!.contains("8 digits"))
+
+        verify(passwordEncoder, never()).encode(any())
+        verify(userRepository, never()).save(any())
+    }
+
+    @Test
+    fun `update should throw BadRequestException when password has no letter`() {
+        val id = randomUUID()
+        val existingUser = createFakeUser(id = id, email = "user@email.com")
+        val request = UpdateUserRequest(email = null, password = "12345678", name = null)
+
+        whenever(userRepository.findById(id)).thenReturn(Optional.of(existingUser))
+
+        val exception = assertThrows<BadRequestException> {
+            service.update(id, request)
+        }
+        assertTrue(exception.message!!.contains("one letter"))
+
+        verify(passwordEncoder, never()).encode(any())
+        verify(userRepository, never()).save(any())
+    }
+
+    @Test
+    fun `update should throw BadRequestException when password has no digit`() {
+        val id = randomUUID()
+        val existingUser = createFakeUser(id = id, email = "user@email.com")
+        val request = UpdateUserRequest(email = null, password = "Password", name = null)
+
+        whenever(userRepository.findById(id)).thenReturn(Optional.of(existingUser))
+
+        val exception = assertThrows<BadRequestException> {
+            service.update(id, request)
+        }
+        assertTrue(exception.message!!.contains("one digit"))
+
+        verify(passwordEncoder, never()).encode(any())
+        verify(userRepository, never()).save(any())
+    }
 
     @Test
     fun `save should return user when repository saves successfully`() {
