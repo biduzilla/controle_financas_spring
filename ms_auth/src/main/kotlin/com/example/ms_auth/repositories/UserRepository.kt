@@ -26,14 +26,13 @@ interface UserRepository : JpaRepository<User, UUID> {
 
     @Query(
         """
-    SELECT u
-    FROM User u
-    WHERE (
-        :search IS NULL
-        OR u.name LIKE CONCAT('%', :search, '%')
-        OR u.email LIKE CONCAT('%', :search, '%')
-    )
-"""
+        SELECT u FROM User u
+        WHERE (
+            :search IS NULL
+            OR LOWER(u.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+            OR LOWER(u.email) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))
+        )
+    """
     )
     fun findAllBySearch(@Param("search") search: String?, pageable: Pageable): Page<User>
 }

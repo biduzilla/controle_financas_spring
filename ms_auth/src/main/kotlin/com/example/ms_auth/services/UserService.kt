@@ -6,7 +6,10 @@ import com.example.ms_auth.exceptions.BadRequestException
 import com.example.ms_auth.exceptions.NotFoundException
 import com.example.ms_auth.models.User
 import com.example.ms_auth.repositories.UserRepository
+import com.example.ms_auth.utils.CacheConstants
 import com.example.ms_auth.utils.orderByToSort
+import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -29,10 +32,15 @@ class UserService(
     private val userRepository: UserRepository,
     private val passwordEncoder: PasswordEncoder,
 ) : IUserService {
+
     override fun save(user: User): User {
         return userRepository.save(user)
     }
 
+    @CacheEvict(
+        cacheNames = [CacheConstants.USER_BY_ID, CacheConstants.USER_BY_EMAIL, CacheConstants.USER_EXISTS_BY_EMAIL],
+        allEntries = true
+    )
     override fun signUp(req: CreateUserRequest): User {
         if (existsByEmail(req.email)) {
             throw BadRequestException("Email already exists")
@@ -47,6 +55,10 @@ class UserService(
         return userRepository.save(user)
     }
 
+    @CacheEvict(
+        cacheNames = [CacheConstants.USER_BY_ID, CacheConstants.USER_BY_EMAIL, CacheConstants.USER_EXISTS_BY_EMAIL],
+        allEntries = true
+    )
     override fun update(id: UUID, req: UpdateUserRequest): User {
         val user = findById(id)
 
@@ -73,14 +85,17 @@ class UserService(
         return if (isAltered) userRepository.save(user) else user
     }
 
+    @Cacheable(cacheNames = [CacheConstants.USER_BY_EMAIL], keyGenerator = "customKeyGenerator")
     override fun findByEmail(email: String): User {
         return userRepository.findByEmail(email) ?: throw NotFoundException()
     }
 
+    @Cacheable(cacheNames = ["algum-cache"], keyGenerator = "customKeyGenerator")
     override fun existsByEmail(email: String): Boolean {
         return userRepository.existsByEmail(email)
     }
 
+    @Cacheable(cacheNames = [CacheConstants.USER_BY_ID], key = "#id")
     override fun findById(id: UUID): User {
         return userRepository.findById(id)
             .orElseThrow { NotFoundException("User not found") }
@@ -97,6 +112,10 @@ class UserService(
         return userRepository.findAllBySearch(search, pageable)
     }
 
+    @CacheEvict(
+        cacheNames = [CacheConstants.USER_BY_ID, CacheConstants.USER_BY_EMAIL, CacheConstants.USER_EXISTS_BY_EMAIL],
+        allEntries = true
+    )
     override fun deleteById(id: UUID) {
         userRepository.deleteById(id)
     }

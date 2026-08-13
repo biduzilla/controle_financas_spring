@@ -1,8 +1,46 @@
 spring:
+  cache:
+    type: redis
+    redis:
+      time-to-live: 30m           # TTL padrão
+      cache-null-values: false    # não cachear null
+      use-key-prefix: true
+      key-prefix: "msauth:"       # isole por microsserviço
+      enable-statistics: true     # útil para métricas
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:minhaSenhaForte}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 2000ms
   application:
     name: ms-auth
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ms
+    username: ms_user
+    password: ms123
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    format_sql: true
 
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
   tracing:
     sampling:
       probability: 1.0
@@ -13,3 +51,11 @@ management:
 logging:
   pattern:
     level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+
+security:
+  jwt:
+    private-key: classpath:keys/privateKey.pem
+    public-key: classpath:keys/publicKey.pem
+    expiration-time: 3600000
+    refresh-expiration-time: 604800000
+

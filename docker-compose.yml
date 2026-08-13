@@ -5,16 +5,91 @@ services:
     volumes:
       - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-      - "8888:8888"   # Métricas do collector
-      - "8889:8889"   # Health check
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
+      - "8889:8889"
+    networks:
+      - api_network
 
   jaeger:
     image: jaegertracing/all-in-one:1.57
     environment:
-      - COLLECTOR_OTLP_ENABLED=true   # Habilita recepção OTLP no Jaeger
+      - COLLECTOR_OTLP_ENABLED=true
+      - COLLECTOR_OTLP_GRPC_PORT=4317
+      - COLLECTOR_OTLP_HTTP_PORT=4318
     ports:
-      - "16686:16686"   # UI do Jaeger
-      - "4317:4317"     # (opcional) OTLP gRPC direto, não usado se passarmos pelo Collector
-      - "4318:4318"     # (opcional) OTLP HTTP direto
+      - "16686:16686"
+    networks:
+      - api_network
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: controle_financas_postgres
+    environment:
+      POSTGRES_DB: ms
+      POSTGRES_USER: ms_user
+      POSTGRES_PASSWORD: ms123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_controle_financas_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: controle_financas_prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_controle_financas_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    networks:
+      - api_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: controle_financas_grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_controle_financas_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+    depends_on:
+      - prometheus
+    networks:
+      - api_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis_controle_financas
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    env_file: .env
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_controle_financas_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a ${REDIS_PASSWORD} ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - api_network
+
+volumes:
+  postgres_controle_financas_data:
+  redis_controle_financas_data:
+  prometheus_controle_financas_data:
+  grafana_controle_financas_data:
+
+networks:
+  api_network:
+    driver: bridge

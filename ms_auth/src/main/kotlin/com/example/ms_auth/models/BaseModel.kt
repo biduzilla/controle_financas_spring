@@ -14,16 +14,16 @@ import java.time.LocalDateTime
 @EntityListeners(AuditingEntityListener::class)
 abstract class BaseModel(
     @field:CreatedDate
-    @Column(insertable = false)
+    @Column(nullable = false, updatable = false)
     var createdAt: LocalDateTime = LocalDateTime.now(),
     @field:CreatedBy
-    @Column(insertable = false)
+    @Column(nullable = false, updatable = false)
     var createdBy: String? = null,
     @field:LastModifiedDate
-    @Column(insertable = false)
+    @Column(nullable = false)
     var updatedAt: LocalDateTime? = null,
     @field:LastModifiedBy
-    @Column(insertable = false)
+    @Column(nullable = false)
     var updatedBy: String? = null,
     var deleted: Boolean = false
 )

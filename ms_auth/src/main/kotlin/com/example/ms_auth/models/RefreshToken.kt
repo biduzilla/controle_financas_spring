@@ -32,7 +32,7 @@ class RefreshToken(
 
     @Column(nullable = false)
     var revoked: Boolean = false
-) {
+): BaseModel() {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is RefreshToken) return false

@@ -1,5 +1,6 @@
 package com.example.ms_auth.configs
 
+import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -25,11 +26,22 @@ class SecurityConfiguration(
             authorizeHttpRequests { auth ->
                 auth
                     .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
 
                     .requestMatchers(
-                        HttpMethod.POST,
-                        "/api/user"
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/api-docs/**",
+                        "/v3/api-docs/**",
+                        "/swagger-resources/**",
+                        "/webjars/**"
                     ).permitAll()
+
+                    .requestMatchers(
+                        EndpointRequest.to("health", "prometheus", "metrics", "info")
+                    ).permitAll()
+
+                    .requestMatchers("/error").permitAll()
 
                     .anyRequest().authenticated()
             }
