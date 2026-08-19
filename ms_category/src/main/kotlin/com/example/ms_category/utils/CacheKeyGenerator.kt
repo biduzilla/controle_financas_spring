@@ -1,6 +1,5 @@
 package com.example.ms_category.utils
 
-import com.example.ms_auth.annotations.NotCacheKey
 import com.example.ms_category.annotations.NotCacheKey
 import org.springframework.cache.interceptor.KeyGenerator
 import java.lang.reflect.Method

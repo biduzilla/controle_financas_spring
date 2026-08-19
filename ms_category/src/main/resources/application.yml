@@ -32,6 +32,9 @@ spring:
       ddl-auto: update
     show-sql: true
     format_sql: true
+    properties:
+      hibernate:
+        multi_tenancy: DISCRIMINATOR
 
 management:
   endpoints:
@@ -67,5 +70,8 @@ security:
     public-key: classpath:keys/publicKey.pem
     expiration-time: 3600000
     refresh-expiration-time: 604800000
+
+server:
+  port: 8082
 
 

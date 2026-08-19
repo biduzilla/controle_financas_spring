@@ -69,3 +69,6 @@ security:
     expiration-time: 3600000
     refresh-expiration-time: 604800000
 
+server:
+  port: 8081
+

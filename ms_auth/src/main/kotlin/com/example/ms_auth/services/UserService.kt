@@ -95,7 +95,7 @@ class UserService(
         return userRepository.existsByEmail(email)
     }
 
-    @Cacheable(cacheNames = [CacheConstants.USER_BY_ID], key = "#id")
+    @Cacheable(cacheNames = [CacheConstants.USER_BY_ID],  keyGenerator = "customKeyGenerator")
     override fun findById(id: UUID): User {
         return userRepository.findById(id)
             .orElseThrow { NotFoundException("User not found") }

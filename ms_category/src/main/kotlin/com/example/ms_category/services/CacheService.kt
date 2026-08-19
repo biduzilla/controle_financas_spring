@@ -1,6 +1,6 @@
 package com.example.ms_category.services
 
-import com.example.ms_auth.utils.CacheKeyGenerator
+import com.example.ms_category.utils.CacheKeyGenerator
 import org.springframework.cache.CacheManager
 import org.springframework.cache.interceptor.KeyGenerator
 import org.springframework.data.redis.core.StringRedisTemplate

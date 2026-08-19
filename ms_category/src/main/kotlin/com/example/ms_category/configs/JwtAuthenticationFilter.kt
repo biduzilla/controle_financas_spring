@@ -14,7 +14,8 @@ import org.springframework.web.servlet.HandlerExceptionResolver
 @Component
 class JwtAuthenticationFilter(
     private val jwtService: IJwtService,
-    private val handlerExceptionResolver: HandlerExceptionResolver
+    private val handlerExceptionResolver: HandlerExceptionResolver,
+    private val tenantIdentifierResolver: TenantIdentifierResolver
 ) : OncePerRequestFilter() {
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -38,6 +39,7 @@ class JwtAuthenticationFilter(
                 )
                 authToken.details = WebAuthenticationDetailsSource().buildDetails(request)
                 SecurityContextHolder.getContext().authentication = authToken
+                tenantIdentifierResolver.setUserId(user.userId)
             }
             filterChain.doFilter(request, response)
         } catch (e: Exception) {

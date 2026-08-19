@@ -1,6 +1,6 @@
 package com.example.ms_category.exceptions
 
-import com.example.ms_auth.dto.ErrorDTO
+import com.example.ms_category.dto.ErrorDTO
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
