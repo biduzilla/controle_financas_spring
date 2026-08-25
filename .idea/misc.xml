@@ -6,6 +6,7 @@
       <list>
         <option value="$PROJECT_DIR$/ms_auth/pom.xml" />
         <option value="$PROJECT_DIR$/ms_category/pom.xml" />
+        <option value="$PROJECT_DIR$/ms_transaction/pom.xml" />
       </list>
     </option>
   </component>
